@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת מעקב כוחות</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            z-index: 9999;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+            flex-direction: row-reverse;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            background: #e0e0e0;
+            position: relative;
+            z-index: 1;
+        }
+
+        #sidebar {
+            width: 300px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            background: #e0e0e0;
+            position: relative;
+            z-index: 1;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #ecf0f1;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .layer-item {
+            background: #34495e;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .layer-item:hover {
+            background: #3498db;
+            transform: translateX(-5px);
+        }
+
+        .layer-item.active {
+            background: #27ae60;
+        }
+
+        .layer-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .layer-info {
+            flex: 1;
+            margin: 0 10px;
+        }
+
+        .layer-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .layer-count {
+            font-size: 12px;
+            color: #bdc3c7;
+            margin-top: 4px;
+        }
+
+        .color-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        #status {
+            background: #27ae60;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #status.disconnected {
+            background: #e74c3c;
+        }
+
+        #status.connecting {
+            background: #f39c12;
+        }
+
+        .force-marker {
+            background: transparent;
+            border: none;
+        }
+
+        .custom-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            font-size: 14px;
+        }
+
+        .leaflet-popup-content {
+            text-align: right;
+            direction: rtl;
+            min-width: 200px;
+        }
+
+        #connection-info {
+            background: #34495e;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        #test-buttons {
+            background: #34495e;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+
+        #test-buttons button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #test-buttons button:hover {
+            background: #2980b9;
+        }
+
+        #error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        #location-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 300px;
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            font-size: 14px;
+        }
+
+        #location-info {
+            display: flex;
+            gap: 30px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-label {
+            color: #95a5a6;
+            font-weight: bold;
+        }
+
+        .info-value {
+            color: #ecf0f1;
+            font-family: monospace;
+        }
+
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        #login-overlay.hidden {
+            display: none;
+        }
+
+        #login-box {
+            background: #2c3e50;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            text-align: center;
+            min-width: 350px;
+        }
+
+        #login-box h2 {
+            color: #ecf0f1;
+            margin-bottom: 30px;
+            border: none;
+        }
+
+        #login-box input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #34495e;
+            border-radius: 5px;
+            font-size: 16px;
+            background: #34495e;
+            color: white;
+        }
+
+        #login-box input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        #login-box button {
+            width: 100%;
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #login-box button:hover {
+            background: #2980b9;
+        }
+
+        #login-error {
+            color: #e74c3c;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .admin-only {
+            display: none;
+        }
+
+        .admin-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        #logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .layer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #34495e;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .layer-header:hover {
+            background: #3498db;
+        }
+
+        .layer-header.active {
+            background: #27ae60;
+        }
+
+        .layer-toggle {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .force-list {
+            margin-left: 20px;
+            margin-bottom: 10px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .force-list.expanded {
+            max-height: 500px;
+        }
+
+        .force-item {
+            background: #2c3e50;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 3px solid;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .force-item:hover {
+            background: #34495e;
+            transform: translateX(-3px);
+        }
+
+        .force-item-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .force-item-id {
+            font-size: 11px;
+            color: #95a5a6;
+        }
+
+        #map-overlay {
+            display: none;
+        }
+
+        #selection-message {
+            display: none;
+        }
+
+        .selecting-mode {
+            cursor: crosshair !important;
+        }
+
+        .selecting-mode * {
+            cursor: crosshair !important;
+        }
+
+        #map-instruction {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 152, 219, 0.95);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 2000;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        #map-instruction.active {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .prediction-controls {
+            background: #34495e;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .prediction-controls label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ecf0f1;
+            cursor: pointer;
+        }
+
+        .prediction-controls input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .prediction-controls input[type="range"] {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .prediction-info {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+
+        #add-force-modal, #add-deadzone-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2c3e50;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 10001;
+            display: none;
+            min-width: 400px;
+        }
+
+        #add-force-modal.active, #add-deadzone-modal.active {
+            display: block;
+        }
+
+        .modal-header {
+            color: #ecf0f1;
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .modal-field {
+            margin-bottom: 15px;
+        }
+
+        .modal-field label {
+            display: block;
+            color: #ecf0f1;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .modal-field input, .modal-field select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #34495e;
+            border-radius: 5px;
+            font-size: 14px;
+            background: #34495e;
+            color: white;
+        }
+
+        .modal-field input:focus, .modal-field select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .location-preview {
+            background: #34495e;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-overlay">
+        <div id="login-box">
+            <h2>🔐 התחברות למערכת</h2>
+            <input type="text" id="username-input" placeholder="שם משתמש" />
+            <input type="password" id="password-input" placeholder="סיסמה" />
+            <button onclick="login()">התחבר</button>
+            <button onclick="viewAsGuest()" style="background: #95a5a6; margin-top: 10px;">כניסה כאורח (צפייה בלבד)</button>
+            <div id="login-error"></div>
+        </div>
+    </div>
+
+    <div id="loading">⏳ טוען מפה...</div>
+    
+    <div id="container" style="display: none;">
+        <div id="map"></div>
+        <div id="sidebar">
+            <div id="error-message"></div>
+            <div id="status" class="connecting">מתחבר לשרת...</div>
+            <div id="connection-info">
+                <div>שרת: <span id="server-url">http://localhost:8080</span></div>
+                <div>מחובר: <span id="connected-status">לא</span></div>
+                <div id="user-status">משתמש: <span id="current-user">אורח</span></div>
+            </div>
+            <button id="logout-btn" style="display: none;" onclick="logout()">התנתק</button>
+            <h2>שכבות כוחות</h2>
+            <div id="layers"></div>
+            <div id="test-buttons" class="admin-only">
+                <button onclick="openAddForceModal()">➕ הוסף כוח ידני</button>
+                <button onclick="openAddDeadZoneModal()">☢️ הוסף Dead Zone ידני</button>
+                <button onclick="clearAllForces()">🗑️ נקה הכל</button>
+            </div>
+            
+            <div class="prediction-controls">
+                <label>
+                    <input type="checkbox" id="show-predictions" checked onchange="togglePredictions()">
+                    🔮 הצג חיזויי מסלול
+                </label>
+                <div class="prediction-info">
+                    <label>זמן חיזוי: <span id="prediction-time-label">60</span> שניות</label>
+                    <input type="range" id="prediction-time" min="30" max="300" value="60" step="30" 
+                           oninput="updatePredictionTime(this.value)">
+                </div>
+            </div>
+        </div>
+        
+        <div id="location-bar">
+            <div id="location-info">
+                <div class="info-item">
+                    <span class="info-label">📍 קואורדינטות:</span>
+                    <span class="info-value" id="mouse-coords">---, ---</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">📌 מיקום:</span>
+                    <span class="info-value" id="location-name">העבר עכבר על המפה</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-label">🗺️ זום:</span>
+                <span class="info-value" id="zoom-level">8</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- הודעה קטנה למעלה -->
+    <div id="map-instruction"></div>
+
+    <!-- Modal להוספת כוח -->
+    <div id="add-force-modal">
+        <div class="modal-header">➕ הוספת כוח חדש</div>
+        <div class="modal-field">
+            <label>שם הכוח:</label>
+            <input type="text" id="force-name-input" placeholder="לדוגמה: גדוד 1" />
+        </div>
+        <div class="modal-field">
+            <label>סוג הכוח:</label>
+            <select id="force-type-input">
+                <option value="infantry">כוחות חי"ר</option>
+                <option value="armor">כוחות שריון</option>
+                <option value="artillery">תותחנים</option>
+                <option value="other">אחר</option>
+            </select>
+        </div>
+        <div class="modal-field">
+            <label>מיקום (לחץ על "בחר במפה"):</label>
+            <button onclick="selectLocationOnMap('force')" class="btn-primary" style="width: 100%;">
+                📍 בחר מיקום במפה
+            </button>
+            <div id="force-location-preview" class="location-preview" style="display: none;">
+                מיקום נבחר: <span id="force-lat">-</span>, <span id="force-lng">-</span>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="submitForce()">✓ הוסף</button>
+            <button class="btn-secondary" onclick="closeAddForceModal()">✗ ביטול</button>
+        </div>
+    </div>
+
+    <!-- Modal להוספת Dead Zone -->
+    <div id="add-deadzone-modal">
+        <div class="modal-header">☢️ הוספת Dead Zone</div>
+        <div class="modal-field">
+            <label>שם האזור:</label>
+            <input type="text" id="deadzone-name-input" placeholder="לדוגמה: אזור מסוכן" />
+        </div>
+        <div class="modal-field">
+            <label>רדיוס (מטרים):</label>
+            <input type="number" id="deadzone-radius-input" placeholder="2000" value="2000" min="100" max="50000" />
+        </div>
+        <div class="modal-field">
+            <label>תיאור (אופציונלי):</label>
+            <input type="text" id="deadzone-description-input" placeholder="אזור אסור לחדירה" />
+        </div>
+        <div class="modal-field">
+            <label>מיקום מרכז (לחץ על "בחר במפה"):</label>
+            <button onclick="selectLocationOnMap('deadzone')" class="btn-primary" style="width: 100%;">
+                📍 בחר מיקום במפה
+            </button>
+            <div id="deadzone-location-preview" class="location-preview" style="display: none;">
+                מיקום נבחר: <span id="deadzone-lat">-</span>, <span id="deadzone-lng">-</span>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="submitDeadZone()">✓ הוסף</button>
+            <button class="btn-secondary" onclick="closeAddDeadZoneModal()">✗ ביטול</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script>
+        console.log('🚀 Starting Force Tracking System...');
+        console.log('Leaflet version:', typeof L !== 'undefined' ? 'loaded' : 'NOT loaded');
+        
+        const SERVER_URL = window.location.origin;
+        let map;
+        let markers = {};
+        let stompClient = null;
+        let isAdmin = false;
+        let currentUser = 'guest';
+        
+        // נתוני אדמין (בפרודקשן - זה צריך להיות בשרת!)
+        const ADMIN_CREDENTIALS = {
+            username: 'admin',
+            password: 'admin123'
+        };
+        
+        let layers = {
+            'infantry': { name: 'כוחות חי"ר', color: '#e74c3c', visible: true, markers: [], icon: '👥', expanded: true },
+            'armor': { name: 'כוחות שריון', color: '#3498db', visible: true, markers: [], icon: '🛡️', expanded: true },
+            'artillery': { name: 'תותחנים', color: '#f39c12', visible: true, markers: [], icon: '💣', expanded: true },
+            'other': { name: 'אחר', color: '#95a5a6', visible: true, markers: [], icon: '📦', expanded: true },
+            'deadzone': { name: 'Dead Zones', color: '#ff0000', visible: true, markers: [], icon: '☢️', expanded: true }
+        };
+        
+        let deadzones = {};
+        let isSelectingLocation = false;
+        let locationCallback = null;
+        let predictionLines = {};  // קווי חיזוי
+        let showPredictions = true; // הצג/הסתר חיזויים
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.style.display = 'block';
+            console.error(message);
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('container').style.display = 'flex';
+        }
+
+        function login() {
+            const username = document.getElementById('username-input').value;
+            const password = document.getElementById('password-input').value;
+            
+            if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+                isAdmin = true;
+                currentUser = username;
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('current-user').innerHTML = '<span class="admin-badge">אדמין</span> ' + username;
+                document.getElementById('logout-btn').style.display = 'block';
+                
+                // הצג כפתורי אדמין
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = 'block';
+                });
+                
+                console.log('✅ התחברות כאדמין הצליחה');
+            } else {
+                document.getElementById('login-error').textContent = 'שם משתמש או סיסמה שגויים';
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        function viewAsGuest() {
+            isAdmin = false;
+            currentUser = 'guest';
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('current-user').textContent = 'אורח (צפייה בלבד)';
+            console.log('👁️ כניסה כאורח');
+        }
+
+        function logout() {
+            isAdmin = false;
+            currentUser = 'guest';
+            document.getElementById('current-user').textContent = 'אורח (צפייה בלבד)';
+            document.getElementById('logout-btn').style.display = 'none';
+            
+            // הסתר כפתורי אדמין
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            console.log('🚪 התנתקות מהמערכת');
+        }
+
+        function initMap() {
+            console.log('🗺️ Initializing map...');
+            
+            if (typeof L === 'undefined') {
+                console.error('❌ Leaflet library not loaded!');
+                showError('ספריית המפות לא נטענה. בדוק את החיבור לאינטרנט.');
+                hideLoading();
+                return;
+            }
+            
+            try {
+                console.log('Creating map object...');
+                map = L.map('map', {
+                    center: [32.0853, 34.7818],
+                    zoom: 8,
+                    zoomControl: true
+                });
+
+                console.log('Adding tile layer...');
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18,
+                    minZoom: 3
+                }).addTo(map);
+
+                // אירוע שמתרחש כשהמפה נטענת
+                map.on('load', function() {
+                    console.log('✅ Map tiles loaded successfully');
+                });
+
+                // כפה render של המפה
+                setTimeout(function() {
+                    map.invalidateSize();
+                    console.log('Map size invalidated');
+                }, 100);
+
+                // הוספת מעקב אחרי עכבר
+                map.on('mousemove', function(e) {
+                    const lat = e.latlng.lat.toFixed(6);
+                    const lng = e.latlng.lng.toFixed(6);
+                    document.getElementById('mouse-coords').textContent = `${lat}, ${lng}`;
+                    
+                    // קבלת שם מיקום (Reverse Geocoding)
+                    updateLocationName(e.latlng.lat, e.latlng.lng);
+                });
+
+                // עדכון רמת זום
+                map.on('zoomend', function() {
+                    document.getElementById('zoom-level').textContent = map.getZoom();
+                });
+
+                console.log('✅ Map initialized successfully');
+                hideLoading();
+                renderLayers();
+                connectToServer();
+                loadExistingForces();
+            } catch (error) {
+                console.error('❌ Map initialization error:', error);
+                showError('שגיאה בטעינת המפה: ' + error.message);
+                hideLoading();
+            }
+        }
+
+        function connectToServer() {
+            console.log('🔌 Connecting to server:', SERVER_URL);
+            
+            // בדיקה אם השרת זמין לפני חיבור WebSocket
+            fetch(SERVER_URL + '/api/forces/health')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Server not responding');
+                    }
+                    console.log('✅ Server is alive, connecting to WebSocket...');
+                    connectWebSocket();
+                })
+                .catch(error => {
+                    console.error('❌ Server is not responding:', error);
+                    updateStatus('disconnected', 'שרת לא זמין ⚠️');
+                    showError('השרת לא רץ. ודא שהשרת פועל על http://localhost:8080');
+                    setTimeout(connectToServer, 5000);
+                });
+        }
+
+        function connectWebSocket() {
+            try {
+                const socket = new SockJS(SERVER_URL + '/ws');
+                stompClient = Stomp.over(socket);
+                
+                stompClient.debug = function(str) {
+                    console.log('STOMP:', str);
+                };
+
+                stompClient.connect({}, function(frame) {
+                    console.log('✅ Connected to WebSocket:', frame);
+                    updateStatus('connected', 'מחובר לשרת ✓');
+                    document.getElementById('connected-status').textContent = 'כן ✓';
+
+                    stompClient.subscribe('/topic/locations', function(message) {
+                        console.log('📍 Received location update');
+                        const location = JSON.parse(message.body);
+                        addForce(location.id, location.latitude, location.longitude, 
+                                location.type, location.name);
+                    });
+
+                    stompClient.subscribe('/topic/removed', function(message) {
+                        console.log('🗑️ Force removed:', message.body);
+                        const forceId = message.body;
+                        removeForce(forceId);
+                    });
+
+                    stompClient.subscribe('/topic/deadzones', function(message) {
+                        console.log('☢️ Received deadzone update');
+                        const deadzone = JSON.parse(message.body);
+                        addDeadZone(deadzone.id, deadzone.latitude, deadzone.longitude, 
+                                   deadzone.radius, deadzone.name, deadzone.description);
+                    });
+
+                    stompClient.subscribe('/topic/deadzones-removed', function(message) {
+                        console.log('🗑️ DeadZone removed:', message.body);
+                        const dzId = message.body;
+                        removeDeadZone(dzId);
+                    });
+
+                }, function(error) {
+                    console.error('❌ WebSocket connection error:', error);
+                    updateStatus('disconnected', 'שגיאת חיבור WebSocket ⚠️');
+                    document.getElementById('connected-status').textContent = 'לא ✗';
+                    showError('לא הצלחתי להתחבר ל-WebSocket. השרת אולי לא תומך ב-WebSocket.');
+                    
+                    setTimeout(connectToServer, 5000);
+                });
+            } catch (error) {
+                console.error('❌ Error creating WebSocket:', error);
+                showError('שגיאה ביצירת חיבור WebSocket: ' + error.message);
+                setTimeout(connectToServer, 5000);
+            }
+        }
+
+        function loadExistingForces() {
+            console.log('📥 Loading existing forces from server...');
+            fetch(SERVER_URL + '/api/forces/all')
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Server returned ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(forces => {
+                    console.log('✅ Loaded', forces.length, 'forces');
+                    forces.forEach(force => {
+                        addForce(force.id, force.latitude, force.longitude, 
+                                force.type, force.name);
+                    });
+                })
+                .catch(error => {
+                    console.error('❌ Error loading forces:', error);
+                    showError('שגיאה בטעינת כוחות קיימים: ' + error.message);
+                });
+            
+            // טעינת Dead Zones קיימים
+            console.log('📥 Loading existing deadzones from server...');
+            fetch(SERVER_URL + '/api/deadzones/all')
+                .then(response => response.json())
+                .then(deadzones => {
+                    console.log('✅ Loaded', deadzones.length, 'deadzones');
+                    deadzones.forEach(dz => {
+                        addDeadZone(dz.id, dz.latitude, dz.longitude, 
+                                   dz.radius, dz.name, dz.description);
+                    });
+                })
+                .catch(error => {
+                    console.error('❌ Error loading deadzones:', error);
+                });
+        }
+
+        function updateStatus(status, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = text;
+            statusEl.className = status;
+        }
+
+        function renderLayers() {
+            const layersDiv = document.getElementById('layers');
+            layersDiv.innerHTML = '';
+
+            for (const [key, layer] of Object.entries(layers)) {
+                if (key === 'deadzone') continue; // Dead Zones בנפרד
+                
+                const layerDiv = document.createElement('div');
+                layerDiv.style.marginBottom = '10px';
+                
+                // כותרת השכבה
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'layer-header' + (layer.visible ? ' active' : '');
+                headerDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" class="layer-checkbox" ${layer.visible ? 'checked' : ''} 
+                               onchange="toggleLayer('${key}')" onclick="event.stopPropagation()">
+                        <span class="layer-toggle" onclick="toggleLayerExpand('${key}')">
+                            ${layer.expanded ? '▼' : '▶'}
+                        </span>
+                        <div>
+                            <div class="layer-name">${layer.icon} ${layer.name}</div>
+                            <div class="layer-count">${layer.markers.length} יחידות</div>
+                        </div>
+                    </div>
+                    <div class="color-indicator" style="background: ${layer.color}"></div>
+                `;
+                
+                // רשימת הכוחות
+                const forceListDiv = document.createElement('div');
+                forceListDiv.className = 'force-list' + (layer.expanded ? ' expanded' : '');
+                
+                // מיון הכוחות לפי ID
+                const sortedMarkers = Array.from(Object.entries(markers))
+                    .filter(([id, marker]) => {
+                        // מצא את הסוג של הכוח
+                        for (const [layerKey, layerData] of Object.entries(layers)) {
+                            if (layerData.markers.includes(marker)) {
+                                return layerKey === key;
+                            }
+                        }
+                        return false;
+                    });
+                
+                sortedMarkers.forEach(([forceId, marker]) => {
+                    const forceDiv = document.createElement('div');
+                    forceDiv.className = 'force-item';
+                    forceDiv.style.borderLeftColor = layer.color;
+                    
+                    const latLng = marker.getLatLng();
+                    const forceName = marker.options.title || forceId;
+                    
+                    forceDiv.innerHTML = `
+                        <div class="force-item-name">${layer.icon} ${forceName}</div>
+                        <div class="force-item-id">ID: ${forceId}</div>
+                        <div class="force-item-id">📍 ${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}</div>
+                    `;
+                    
+                    forceDiv.onclick = function() {
+                        map.setView([latLng.lat, latLng.lng], 15);
+                        marker.openPopup();
+                    };
+                    
+                    forceListDiv.appendChild(forceDiv);
+                });
+                
+                layerDiv.appendChild(headerDiv);
+                layerDiv.appendChild(forceListDiv);
+                layersDiv.appendChild(layerDiv);
+            }
+            
+            // Dead Zones בנפרד
+            const dzLayer = layers['deadzone'];
+            const dzDiv = document.createElement('div');
+            dzDiv.style.marginBottom = '10px';
+            
+            const dzHeaderDiv = document.createElement('div');
+            dzHeaderDiv.className = 'layer-header' + (dzLayer.visible ? ' active' : '');
+            dzHeaderDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" class="layer-checkbox" ${dzLayer.visible ? 'checked' : ''} 
+                           onchange="toggleLayer('deadzone')" onclick="event.stopPropagation()">
+                    <span class="layer-toggle" onclick="toggleLayerExpand('deadzone')">
+                        ${dzLayer.expanded ? '▼' : '▶'}
+                    </span>
+                    <div>
+                        <div class="layer-name">${dzLayer.icon} ${dzLayer.name}</div>
+                        <div class="layer-count">${Object.keys(deadzones).length} אזורים</div>
+                    </div>
+                </div>
+                <div class="color-indicator" style="background: ${dzLayer.color}"></div>
+            `;
+            
+            const dzListDiv = document.createElement('div');
+            dzListDiv.className = 'force-list' + (dzLayer.expanded ? ' expanded' : '');
+            
+            Object.entries(deadzones).forEach(([dzId, dz]) => {
+                const dzItemDiv = document.createElement('div');
+                dzItemDiv.className = 'force-item';
+                dzItemDiv.style.borderLeftColor = dzLayer.color;
+                
+                const latLng = dz.circle.getLatLng();
+                const dzName = dzId; // צריך לשמור את השם במבנה
+                
+                dzItemDiv.innerHTML = `
+                    <div class="force-item-name">☢️ ${dzName}</div>
+                    <div class="force-item-id">רדיוס: ${dz.circle.getRadius()}m</div>
+                    <div class="force-item-id">📍 ${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}</div>
+                `;
+                
+                dzItemDiv.onclick = function() {
+                    map.setView([latLng.lat, latLng.lng], 13);
+                    dz.circle.openPopup();
+                };
+                
+                dzListDiv.appendChild(dzItemDiv);
+            });
+            
+            dzDiv.appendChild(dzHeaderDiv);
+            dzDiv.appendChild(dzListDiv);
+            layersDiv.appendChild(dzDiv);
+        }
+
+        function toggleLayerExpand(layerKey) {
+            layers[layerKey].expanded = !layers[layerKey].expanded;
+            renderLayers();
+        }
+
+        function toggleLayer(layerKey) {
+            layers[layerKey].visible = !layers[layerKey].visible;
+            
+            layers[layerKey].markers.forEach(marker => {
+                if (layers[layerKey].visible) {
+                    marker.addTo(map);
+                } else {
+                    marker.remove();
+                }
+            });
+
+            renderLayers();
+        }
+
+        function createCustomIcon(color, icon) {
+            return L.divIcon({
+                className: 'force-marker',
+                html: `<div class="custom-icon" style="background-color: ${color}">${icon}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            });
+        }
+
+        function addForce(id, lat, lng, type, name) {
+            // המרת סוגים ישנים לחדשים
+            if (type === 'air' || type === 'logistics') {
+                type = 'other';
+            }
+            
+            if (markers[id]) {
+                markers[id].setLatLng([lat, lng]);
+                console.log('📍 Updated force:', name);
+            } else {
+                const layer = layers[type];
+                if (!layer) {
+                    console.error('Unknown force type:', type);
+                    return;
+                }
+
+                const marker = L.marker([lat, lng], {
+                    icon: createCustomIcon(layer.color, layer.icon),
+                    title: name
+                });
+
+                const popupContent = `
+                    <div style="padding: 10px;">
+                        <strong style="font-size: 16px;">${name}</strong><br>
+                        <span style="color: #555;">סוג: ${layer.name}</span><br>
+                        <span style="color: #555;">מיקום: ${lat.toFixed(5)}, ${lng.toFixed(5)}</span><br>
+                        <span style="color: #555;">ID: ${id}</span>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+
+                if (layer.visible) {
+                    marker.addTo(map);
+                }
+
+                markers[id] = marker;
+                layer.markers.push(marker);
+                console.log('✅ Added new force:', name);
+            }
+
+            renderLayers();
+            
+            // עדכן חיזוי אחרי הוספת מיקום
+            if (showPredictions) {
+                setTimeout(() => updatePrediction(id), 500);
+            }
+        }
+
+        function removeForce(id) {
+            if (markers[id]) {
+                markers[id].remove();
+                delete markers[id];
+                
+                for (const layer of Object.values(layers)) {
+                    layer.markers = layer.markers.filter(m => m !== markers[id]);
+                }
+                
+                // הסר גם את קו החיזוי
+                removePrediction(id);
+                
+                renderLayers();
+                console.log('🗑️ Removed force:', id);
+            }
+        }
+
+        // פונקציות חיזוי מסלול
+        function updatePrediction(forceId) {
+            if (!showPredictions) return;
+            
+            const predictionSeconds = parseInt(document.getElementById('prediction-time').value);
+            
+            fetch(SERVER_URL + '/api/trajectory/predict/' + forceId + '?seconds=' + predictionSeconds)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('No prediction available');
+                    }
+                    return response.json();
+                })
+                .then(prediction => {
+                    drawPrediction(forceId, prediction);
+                })
+                .catch(error => {
+                    console.log('No prediction for ' + forceId + ':', error.message);
+                });
+        }
+
+        function drawPrediction(forceId, prediction) {
+            // הסר חיזוי קודם
+            removePrediction(forceId);
+            
+            if (!prediction || !prediction.predictedPath || prediction.predictedPath.length === 0) {
+                return;
+            }
+            
+            // בנה מערך של נקודות לקו
+            const points = [[
+                prediction.currentPosition.latitude,
+                prediction.currentPosition.longitude
+            ]];
+            
+            prediction.predictedPath.forEach(pos => {
+                points.push([pos.latitude, pos.longitude]);
+            });
+            
+            // מצא את הצבע של הכוח
+            let forceColor = '#3498db';
+            for (const [key, layer] of Object.entries(layers)) {
+                if (key === 'deadzone') continue;
+                const forceMarker = markers[forceId];
+                if (forceMarker && layer.markers.includes(forceMarker)) {
+                    forceColor = layer.color;
+                    break;
+                }
+            }
+            
+            // צייר קו מקווקו
+            const predictionLine = L.polyline(points, {
+                color: forceColor,
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '10, 10',
+                smoothFactor: 1
+            }).addTo(map);
+            
+            // הוסף חץ בסוף
+            const lastPoint = points[points.length - 1];
+            const arrowIcon = L.divIcon({
+                html: `<div style="color: ${forceColor}; font-size: 24px; transform: rotate(${prediction.heading}deg);">➤</div>`,
+                className: '',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            
+            const arrowMarker = L.marker(lastPoint, { icon: arrowIcon }).addTo(map);
+            
+            // Popup עם מידע
+            const popupContent = `
+                <div style="text-align: right; direction: rtl; padding: 5px;">
+                    <strong>🔮 חיזוי מסלול</strong><br>
+                    <span style="font-size: 12px;">
+                        מהירות: ${(prediction.speed * 3.6).toFixed(1)} קמ"ש<br>
+                        כיוון: ${prediction.heading.toFixed(0)}°<br>
+                        ביטחון: ${(prediction.confidence * 100).toFixed(0)}%
+                    </span>
+                </div>
+            `;
+            predictionLine.bindPopup(popupContent);
+            
+            // שמור את הקו והחץ
+            predictionLines[forceId] = {
+                line: predictionLine,
+                arrow: arrowMarker
+            };
+            
+            console.log('🔮 Drew prediction for ' + forceId);
+        }
+
+        function removePrediction(forceId) {
+            if (predictionLines[forceId]) {
+                predictionLines[forceId].line.remove();
+                predictionLines[forceId].arrow.remove();
+                delete predictionLines[forceId];
+            }
+        }
+
+        function togglePredictions() {
+            showPredictions = document.getElementById('show-predictions').checked;
+            
+            if (showPredictions) {
+                // הצג את כל החיזויים
+                for (const forceId of Object.keys(markers)) {
+                    updatePrediction(forceId);
+                }
+            } else {
+                // הסתר את כל החיזויים
+                for (const forceId of Object.keys(predictionLines)) {
+                    removePrediction(forceId);
+                }
+            }
+        }
+
+        function updatePredictionTime(value) {
+            document.getElementById('prediction-time-label').textContent = value;
+            
+            // עדכן את כל החיזויים עם הזמן החדש
+            if (showPredictions) {
+                for (const forceId of Object.keys(markers)) {
+                    updatePrediction(forceId);
+                }
+            }
+        }
+
+        // עדכון חיזויים אוטומטי כל 5 שניות
+        setInterval(() => {
+            if (showPredictions) {
+                for (const forceId of Object.keys(markers)) {
+                    updatePrediction(forceId);
+                }
+            }
+        }, 5000);
+
+        function addDeadZone(id, lat, lng, radius, name, description) {
+            if (deadzones[id]) {
+                deadzones[id].circle.setLatLng([lat, lng]);
+                deadzones[id].circle.setRadius(radius);
+                console.log('📍 Updated deadzone:', name);
+            } else {
+                const layer = layers['deadzone'];
+                
+                // יצירת עיגול
+                const circle = L.circle([lat, lng], {
+                    color: layer.color,
+                    fillColor: layer.color,
+                    fillOpacity: 0.3,
+                    radius: radius,
+                    weight: 2
+                });
+
+                // יצירת מרכז עם אייקון
+                const marker = L.marker([lat, lng], {
+                    icon: createCustomIcon(layer.color, layer.icon)
+                });
+
+                const popupContent = `
+                    <div style="padding: 10px;">
+                        <strong style="font-size: 16px; color: #e74c3c;">☢️ ${name}</strong><br>
+                        <span style="color: #555;">רדיוס: ${radius} מטר</span><br>
+                        <span style="color: #555;">מיקום: ${lat.toFixed(5)}, ${lng.toFixed(5)}</span><br>
+                        ${description ? `<span style="color: #555;">תיאור: ${description}</span><br>` : ''}
+                        <span style="color: #555;">ID: ${id}</span>
+                    </div>
+                `;
+
+                circle.bindPopup(popupContent);
+                marker.bindPopup(popupContent);
+
+                if (layer.visible) {
+                    circle.addTo(map);
+                    marker.addTo(map);
+                }
+
+                deadzones[id] = { circle, marker };
+                layer.markers.push(circle);
+                layer.markers.push(marker);
+                
+                console.log('✅ Added new deadzone:', name, 'with radius:', radius);
+            }
+
+            renderLayers();
+        }
+
+        function removeDeadZone(id) {
+            if (deadzones[id]) {
+                deadzones[id].circle.remove();
+                deadzones[id].marker.remove();
+                
+                const layer = layers['deadzone'];
+                layer.markers = layer.markers.filter(m => 
+                    m !== deadzones[id].circle && m !== deadzones[id].marker
+                );
+                
+                delete deadzones[id];
+                renderLayers();
+                console.log('🗑️ Removed deadzone:', id);
+            }
+        }
+
+        // פונקציות Modal להוספת כוח
+        function openAddForceModal() {
+            if (!isAdmin) {
+                alert('רק אדמין יכול להוסיף כוחות!');
+                return;
+            }
+            document.getElementById('add-force-modal').classList.add('active');
+        }
+
+        function closeAddForceModal() {
+            document.getElementById('add-force-modal').classList.remove('active');
+            document.getElementById('force-name-input').value = '';
+            document.getElementById('force-location-preview').style.display = 'none';
+            
+            // אם בתהליך בחירת מיקום - בטל אותו
+            if (isSelectingLocation) {
+                document.getElementById('map-instruction').classList.remove('active');
+                document.body.classList.remove('selecting-mode');
+                map.off('click');
+                isSelectingLocation = false;
+            }
+        }
+
+        function selectLocationOnMap(type) {
+            isSelectingLocation = true;
+            locationCallback = type;
+            
+            // הסתר את המודל הנוכחי
+            if (type === 'force') {
+                document.getElementById('add-force-modal').classList.remove('active');
+            } else {
+                document.getElementById('add-deadzone-modal').classList.remove('active');
+            }
+            
+            // הצג הודעה קטנה למעלה
+            const instruction = document.getElementById('map-instruction');
+            instruction.textContent = '👆 לחץ על המפה לבחירת מיקום (ESC לביטול)';
+            instruction.classList.add('active');
+            
+            // שנה את הסמן לצלב
+            document.body.classList.add('selecting-mode');
+            
+            console.log('📍 Waiting for map click...');
+            
+            // הוספת מאזין לחיצה על המפה
+            const handleMapClick = function(e) {
+                console.log('🎯 Map clicked at:', e.latlng);
+                
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                // הסתר את ההודעה
+                instruction.classList.remove('active');
+                document.body.classList.remove('selecting-mode');
+                
+                // עדכן את המיקום ב-Modal המתאים
+                if (type === 'force') {
+                    document.getElementById('force-lat').textContent = lat.toFixed(6);
+                    document.getElementById('force-lng').textContent = lng.toFixed(6);
+                    document.getElementById('force-location-preview').style.display = 'block';
+                    
+                    // הצג שוב את המודל
+                    setTimeout(() => {
+                        document.getElementById('add-force-modal').classList.add('active');
+                    }, 100);
+                } else {
+                    document.getElementById('deadzone-lat').textContent = lat.toFixed(6);
+                    document.getElementById('deadzone-lng').textContent = lng.toFixed(6);
+                    document.getElementById('deadzone-location-preview').style.display = 'block';
+                    
+                    // הצג שוב את המודל
+                    setTimeout(() => {
+                        document.getElementById('add-deadzone-modal').classList.add('active');
+                    }, 100);
+                }
+                
+                isSelectingLocation = false;
+                console.log('✅ Location selected:', lat, lng);
+                
+                // הסר את המאזין
+                map.off('click', handleMapClick);
+            };
+            
+            // הוסף את המאזין
+            map.on('click', handleMapClick);
+        }
+
+        function submitForce() {
+            const name = document.getElementById('force-name-input').value;
+            const type = document.getElementById('force-type-input').value;
+            const lat = parseFloat(document.getElementById('force-lat').textContent);
+            const lng = parseFloat(document.getElementById('force-lng').textContent);
+            
+            if (!name) {
+                alert('נא להזין שם כוח');
+                return;
+            }
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('נא לבחור מיקום במפה');
+                return;
+            }
+            
+            const location = {
+                id: 'manual_' + Date.now(),
+                latitude: lat,
+                longitude: lng,
+                type: type,
+                name: name
+            };
+
+            console.log('📤 Sending manual force:', location);
+
+            fetch(SERVER_URL + '/api/forces/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(location)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Manual force sent successfully:', data);
+                closeAddForceModal();
+            })
+            .catch(error => {
+                console.error('❌ Error sending manual force:', error);
+                showError('שגיאה בשליחת כוח: ' + error.message);
+            });
+        }
+
+        // פונקציות Modal להוספת Dead Zone
+        function openAddDeadZoneModal() {
+            if (!isAdmin) {
+                alert('רק אדמין יכול להוסיף Dead Zones!');
+                return;
+            }
+            document.getElementById('add-deadzone-modal').classList.add('active');
+        }
+
+        function closeAddDeadZoneModal() {
+            document.getElementById('add-deadzone-modal').classList.remove('active');
+            document.getElementById('deadzone-name-input').value = '';
+            document.getElementById('deadzone-radius-input').value = '2000';
+            document.getElementById('deadzone-description-input').value = '';
+            document.getElementById('deadzone-location-preview').style.display = 'none';
+            
+            // אם בתהליך בחירת מיקום - בטל אותו
+            if (isSelectingLocation) {
+                document.getElementById('map-instruction').classList.remove('active');
+                document.body.classList.remove('selecting-mode');
+                map.off('click');
+                isSelectingLocation = false;
+            }
+        }
+
+        function submitDeadZone() {
+            const name = document.getElementById('deadzone-name-input').value;
+            const radius = parseFloat(document.getElementById('deadzone-radius-input').value);
+            const description = document.getElementById('deadzone-description-input').value;
+            const lat = parseFloat(document.getElementById('deadzone-lat').textContent);
+            const lng = parseFloat(document.getElementById('deadzone-lng').textContent);
+            
+            if (!name) {
+                alert('נא להזין שם אזור');
+                return;
+            }
+            
+            if (isNaN(radius) || radius < 100) {
+                alert('רדיוס חייב להיות לפחות 100 מטר');
+                return;
+            }
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('נא לבחור מיקום במפה');
+                return;
+            }
+            
+            const deadzone = {
+                id: 'dz_manual_' + Date.now(),
+                latitude: lat,
+                longitude: lng,
+                radius: radius,
+                name: name,
+                description: description || 'אזור מסוכן'
+            };
+
+            console.log('📤 Sending manual deadzone:', deadzone);
+
+            fetch(SERVER_URL + '/api/deadzones/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(deadzone)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Manual deadzone sent successfully:', data);
+                closeAddDeadZoneModal();
+            })
+            .catch(error => {
+                console.error('❌ Error sending manual deadzone:', error);
+                showError('שגיאה בשליחת Dead Zone: ' + error.message);
+            });
+        }
+
+        function addTestForce() {
+            if (!isAdmin) {
+                alert('רק אדמין יכול להוסיף כוחות!');
+                return;
+            }
+            
+            const types = ['infantry', 'armor', 'artillery', 'other'];
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            const randomId = 'test_' + Date.now();
+            const randomLat = 32.0853 + (Math.random() - 0.5) * 2;
+            const randomLng = 34.7818 + (Math.random() - 0.5) * 2;
+            
+            const location = {
+                id: randomId,
+                latitude: randomLat,
+                longitude: randomLng,
+                type: randomType,
+                name: 'כוח בדיקה ' + Math.floor(Math.random() * 100)
+            };
+
+            console.log('📤 Sending test force:', location);
+
+            fetch(SERVER_URL + '/api/forces/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(location)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Test force sent successfully:', data);
+            })
+            .catch(error => {
+                console.error('❌ Error sending test force:', error);
+                showError('שגיאה בשליחת כוח בדיקה: ' + error.message);
+            });
+        }
+
+        function addTestDeadZone() {
+            if (!isAdmin) {
+                alert('רק אדמין יכול להוסיף Dead Zones!');
+                return;
+            }
+            
+            const randomId = 'dz_' + Date.now();
+            const randomLat = 32.0853 + (Math.random() - 0.5) * 2;
+            const randomLng = 34.7818 + (Math.random() - 0.5) * 2;
+            const randomRadius = 1000 + Math.random() * 4000; // 1-5 ק"מ
+            
+            const deadzone = {
+                id: randomId,
+                latitude: randomLat,
+                longitude: randomLng,
+                radius: randomRadius,
+                name: 'אזור מסוכן ' + Math.floor(Math.random() * 100),
+                description: 'אזור אסור לחדירה - בדיקה'
+            };
+
+            console.log('📤 Sending test deadzone:', deadzone);
+
+            fetch(SERVER_URL + '/api/deadzones/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(deadzone)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ Test deadzone sent successfully:', data);
+            })
+            .catch(error => {
+                console.error('❌ Error sending test deadzone:', error);
+                showError('שגיאה בשליחת Dead Zone: ' + error.message);
+            });
+        }
+
+        function clearAllForces() {
+            if (!isAdmin) {
+                alert('רק אדמין יכול למחוק כוחות!');
+                return;
+            }
+            
+            if (!confirm('האם למחוק את כל הכוחות ו-Dead Zones?')) return;
+            
+            fetch(SERVER_URL + '/api/forces/all', {
+                method: 'DELETE'
+            })
+            .then(() => {
+                console.log('🧹 Cleared all forces');
+                for (const marker of Object.values(markers)) {
+                    marker.remove();
+                }
+                markers = {};
+                
+                // מחיקת dead zones
+                for (const dz of Object.values(deadzones)) {
+                    dz.circle.remove();
+                    dz.marker.remove();
+                }
+                deadzones = {};
+                
+                for (const layer of Object.values(layers)) {
+                    layer.markers = [];
+                }
+                renderLayers();
+            })
+            .catch(error => {
+                console.error('❌ Error clearing forces:', error);
+                showError('שגיאה במחיקת כוחות: ' + error.message);
+            });
+        }
+
+        // Reverse Geocoding - המרת קואורדינטות לשם מיקום
+        let geocodeTimeout;
+        function updateLocationName(lat, lng) {
+            clearTimeout(geocodeTimeout);
+            
+            geocodeTimeout = setTimeout(function() {
+                fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=he`)
+                    .then(response => response.json())
+                    .then(data => {
+                        let locationName = 'לא זוהה';
+                        
+                        if (data.address) {
+                            const parts = [];
+                            if (data.address.city) parts.push(data.address.city);
+                            else if (data.address.town) parts.push(data.address.town);
+                            else if (data.address.village) parts.push(data.address.village);
+                            
+                            if (data.address.road) parts.push(data.address.road);
+                            else if (data.address.suburb) parts.push(data.address.suburb);
+                            
+                            locationName = parts.length > 0 ? parts.join(', ') : data.display_name;
+                        }
+                        
+                        document.getElementById('location-name').textContent = locationName;
+                    })
+                    .catch(error => {
+                        console.error('Geocoding error:', error);
+                        document.getElementById('location-name').textContent = 'שגיאה בזיהוי מיקום';
+                    });
+            }, 500); // המתן חצי שנייה לפני שליחת בקשה
+        }
+
+        window.toggleLayer = toggleLayer;
+        window.toggleLayerExpand = toggleLayerExpand;
+        window.login = login;
+        window.viewAsGuest = viewAsGuest;
+        window.logout = logout;
+        window.openAddForceModal = openAddForceModal;
+        window.closeAddForceModal = closeAddForceModal;
+        window.selectLocationOnMap = selectLocationOnMap;
+        window.submitForce = submitForce;
+        window.openAddDeadZoneModal = openAddDeadZoneModal;
+        window.closeAddDeadZoneModal = closeAddDeadZoneModal;
+        window.submitDeadZone = submitDeadZone;
+        window.togglePredictions = togglePredictions;
+        window.updatePredictionTime = updatePredictionTime;
+
+        // הפעלת המערכת
+        console.log('📍 Server URL:', SERVER_URL);
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM loaded, initializing...');
+            setTimeout(initMap, 500);
+        });
+
+        // גם אם DOM כבר נטען
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(initMap, 500);
+        }
+
+        // תמיכה ב-Enter בטופס התחברות
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('password-input');
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        login();
+                    }
+                });
+            }
+        });
+
+        // תמיכה ב-ESC לביטול בחירת מיקום
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && isSelectingLocation) {
+                console.log('❌ Location selection cancelled');
+                document.getElementById('map-instruction').classList.remove('active');
+                document.body.classList.remove('selecting-mode');
+                map.off('click');
+                isSelectingLocation = false;
+                
+                // החזר את המודל המתאים
+                if (locationCallback === 'force') {
+                    document.getElementById('add-force-modal').classList.add('active');
+                } else {
+                    document.getElementById('add-deadzone-modal').classList.add('active');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

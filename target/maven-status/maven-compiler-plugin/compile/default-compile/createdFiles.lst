@@ -1,0 +1,16 @@
+com\forces\service\TrajectoryService.class
+com\forces\controller\TrajectoryController.class
+com\forces\model\ForceTrajectory.class
+com\forces\service\ForceService.class
+com\forces\model\PredictionResult$Position.class
+com\forces\controller\ForceController.class
+com\forces\controller\DeadZoneController.class
+com\forces\model\DeadZone.class
+com\forces\config\CorsConfig.class
+com\forces\config\WebSocketConfig.class
+com\forces\model\PredictionResult.class
+com\forces\ForceTrackingApplication.class
+com\forces\service\DeadZoneService.class
+com\forces\model\ForceTrajectory$LocationPoint.class
+com\forces\algorithm\KalmanFilter.class
+com\forces\model\ForceLocation.class
