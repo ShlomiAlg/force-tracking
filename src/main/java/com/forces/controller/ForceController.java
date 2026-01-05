@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.forces.model.ForceLocation;
 import com.forces.service.ForceService;
+import com.forces.service.TrajectoryService;
 
 @RestController
 @RequestMapping("/api/forces")
@@ -27,35 +28,32 @@ public class ForceController {
     private ForceService forceService;
 
     @Autowired
+    private TrajectoryService trajectoryService;  // ← חשוב!
+
+    @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * עדכון מיקום כוח (מהטלפון)
-     * POST http://localhost:8080/api/forces/update
-     */
     @PostMapping("/update")
     public ResponseEntity<ForceLocation> updateLocation(@RequestBody ForceLocation location) {
         ForceLocation updated = forceService.updateLocation(location);
         
-        // שליחה לכל המחוברים דרך WebSocket
+        // ← זה החלק החשוב! שמירה בהיסטוריה
+        trajectoryService.addLocation(
+            location.getId(),
+            location.getLatitude(),
+            location.getLongitude()
+        );
+        
         messagingTemplate.convertAndSend("/topic/locations", updated);
         
         return ResponseEntity.ok(updated);
     }
 
-    /**
-     * קבלת כל הכוחות
-     * GET http://localhost:8080/api/forces/all
-     */
     @GetMapping("/all")
     public ResponseEntity<List<ForceLocation>> getAllForces() {
         return ResponseEntity.ok(forceService.getAllForces());
     }
 
-    /**
-     * קבלת כוח ספציפי
-     * GET http://localhost:8080/api/forces/{id}
-     */
     @GetMapping("/{id}")
     public ResponseEntity<ForceLocation> getForce(@PathVariable String id) {
         ForceLocation force = forceService.getForce(id);
@@ -65,53 +63,35 @@ public class ForceController {
         return ResponseEntity.notFound().build();
     }
 
-    /**
-     * מחיקת כוח
-     * DELETE http://localhost:8080/api/forces/{id}
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> removeForce(@PathVariable String id) {
         boolean removed = forceService.removeForce(id);
         if (removed) {
+            trajectoryService.removeTrajectory(id);  // ← נקה גם את ההיסטוריה
             messagingTemplate.convertAndSend("/topic/removed", id);
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
     }
 
-    /**
-     * קבלת כוחות לפי סוג
-     * GET http://localhost:8080/api/forces/type/{type}
-     */
     @GetMapping("/type/{type}")
     public ResponseEntity<List<ForceLocation>> getForcesByType(@PathVariable String type) {
         return ResponseEntity.ok(forceService.getForcesByType(type));
     }
 
-    /**
-     * סטטיסטיקה - ספירה לפי סוג
-     * GET http://localhost:8080/api/forces/stats/count
-     */
     @GetMapping("/stats/count")
     public ResponseEntity<Map<String, Integer>> getForceStats() {
         return ResponseEntity.ok(forceService.getForceCountByType());
     }
 
-    /**
-     * מחיקת כל הכוחות
-     * DELETE http://localhost:8080/api/forces/all
-     */
     @DeleteMapping("/all")
     public ResponseEntity<Void> clearAllForces() {
         forceService.clearAllForces();
+        trajectoryService.clearAll();  // ← נקה את כל ההיסטוריה
         messagingTemplate.convertAndSend("/topic/cleared", "all");
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * בדיקת תקינות השרת
-     * GET http://localhost:8080/api/forces/health
-     */
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
         return ResponseEntity.ok("Server is running ✓");
