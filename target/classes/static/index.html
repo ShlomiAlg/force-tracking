@@ -1704,10 +1704,18 @@
             })
             .then(() => {
                 console.log('🧹 Cleared all forces');
+                
+                // מחיקת כל הסמנים
                 for (const marker of Object.values(markers)) {
                     marker.remove();
                 }
                 markers = {};
+                
+                // מחיקת כל הקווים והמשולשים של החיזוי
+                for (const forceId of Object.keys(predictionLines)) {
+                    removePrediction(forceId);
+                }
+                predictionLines = {};
                 
                 // מחיקת dead zones
                 for (const dz of Object.values(deadzones)) {
