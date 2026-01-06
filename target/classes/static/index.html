@@ -1708,25 +1708,48 @@
             
             if (!confirm('האם למחוק את כל הכוחות ו-Dead Zones?')) return;
             
-            console.log('🧹 Clearing all forces and predictions...');
+            console.log('🧹 Clearing everything...');
             
-            // מחיקת כל החיזויים תחילה
-            const predictionIds = Object.keys(predictionLines);
-            console.log('Found predictions to remove:', predictionIds);
-            predictionIds.forEach(id => {
-                removePrediction(id);
-            });
+            // מחיקת כל החיזויים - בצורה אגרסיבית
+            for (const forceId in predictionLines) {
+                try {
+                    const pred = predictionLines[forceId];
+                    if (pred.line && map.hasLayer(pred.line)) {
+                        map.removeLayer(pred.line);
+                    }
+                    if (pred.arrow && map.hasLayer(pred.arrow)) {
+                        map.removeLayer(pred.arrow);
+                    }
+                } catch (e) {
+                    console.error('Error removing prediction:', e);
+                }
+            }
+            predictionLines = {};
             
             // מחיקת כל הסמנים
-            for (const marker of Object.values(markers)) {
-                marker.remove();
+            for (const id in markers) {
+                try {
+                    if (markers[id] && map.hasLayer(markers[id])) {
+                        map.removeLayer(markers[id]);
+                    }
+                } catch (e) {
+                    console.error('Error removing marker:', e);
+                }
             }
             markers = {};
             
             // מחיקת dead zones
-            for (const dz of Object.values(deadzones)) {
-                dz.circle.remove();
-                dz.marker.remove();
+            for (const id in deadzones) {
+                try {
+                    if (deadzones[id].circle && map.hasLayer(deadzones[id].circle)) {
+                        map.removeLayer(deadzones[id].circle);
+                    }
+                    if (deadzones[id].marker && map.hasLayer(deadzones[id].marker)) {
+                        map.removeLayer(deadzones[id].marker);
+                    }
+                } catch (e) {
+                    console.error('Error removing deadzone:', e);
+                }
             }
             deadzones = {};
             
@@ -1736,17 +1759,17 @@
             }
             
             renderLayers();
+            console.log('✅ Map cleared locally');
             
             // מחיקה מהשרת
             fetch(SERVER_URL + '/api/forces/all', {
                 method: 'DELETE'
             })
             .then(() => {
-                console.log('✅ All cleared successfully');
+                console.log('✅ Server cleared');
             })
             .catch(error => {
-                console.error('❌ Error:', error);
-                showError('שגיאה במחיקה: ' + error.message);
+                console.error('❌ Server error:', error);
             });
         }
 
