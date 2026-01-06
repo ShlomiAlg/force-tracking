@@ -1196,7 +1196,7 @@
                     layer.markers = layer.markers.filter(m => m !== markers[id]);
                 }
                 
-                // הסר גם את קו החיזוי
+                // הסר את החיזוי
                 removePrediction(id);
                 
                 renderLayers();
@@ -1298,9 +1298,18 @@
 
         function removePrediction(forceId) {
             if (predictionLines[forceId]) {
-                predictionLines[forceId].line.remove();
-                predictionLines[forceId].arrow.remove();
+                try {
+                    if (predictionLines[forceId].line) {
+                        map.removeLayer(predictionLines[forceId].line);
+                    }
+                    if (predictionLines[forceId].arrow) {
+                        map.removeLayer(predictionLines[forceId].arrow);
+                    }
+                } catch (e) {
+                    console.error('Error removing prediction layers:', e);
+                }
                 delete predictionLines[forceId];
+                console.log('✅ Removed prediction for:', forceId);
             }
         }
 
@@ -1699,31 +1708,45 @@
             
             if (!confirm('האם למחוק את כל הכוחות ו-Dead Zones?')) return;
             
+            console.log('🧹 Clearing all forces and predictions...');
+            
+            // מחיקת כל החיזויים תחילה
+            const predictionIds = Object.keys(predictionLines);
+            console.log('Found predictions to remove:', predictionIds);
+            predictionIds.forEach(id => {
+                removePrediction(id);
+            });
+            
+            // מחיקת כל הסמנים
+            for (const marker of Object.values(markers)) {
+                marker.remove();
+            }
+            markers = {};
+            
+            // מחיקת dead zones
+            for (const dz of Object.values(deadzones)) {
+                dz.circle.remove();
+                dz.marker.remove();
+            }
+            deadzones = {};
+            
+            // ניקוי השכבות
+            for (const layer of Object.values(layers)) {
+                layer.markers = [];
+            }
+            
+            renderLayers();
+            
+            // מחיקה מהשרת
             fetch(SERVER_URL + '/api/forces/all', {
                 method: 'DELETE'
             })
             .then(() => {
-                console.log('🧹 Cleared all forces');
-                for (const marker of Object.values(markers)) {
-                    marker.remove();
-                }
-                markers = {};
-                
-                // מחיקת dead zones
-                for (const dz of Object.values(deadzones)) {
-                    dz.circle.remove();
-                    dz.marker.remove();
-                }
-                deadzones = {};
-                
-                for (const layer of Object.values(layers)) {
-                    layer.markers = [];
-                }
-                renderLayers();
+                console.log('✅ All cleared successfully');
             })
             .catch(error => {
-                console.error('❌ Error clearing forces:', error);
-                showError('שגיאה במחיקת כוחות: ' + error.message);
+                console.error('❌ Error:', error);
+                showError('שגיאה במחיקה: ' + error.message);
             });
         }
 
