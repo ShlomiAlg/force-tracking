@@ -1710,45 +1710,37 @@
             
             console.log('🧹 Clearing everything...');
             
-            // מחיקת כל החיזויים - בצורה אגרסיבית
-            for (const forceId in predictionLines) {
-                try {
-                    const pred = predictionLines[forceId];
-                    if (pred.line && map.hasLayer(pred.line)) {
-                        map.removeLayer(pred.line);
-                    }
-                    if (pred.arrow && map.hasLayer(pred.arrow)) {
-                        map.removeLayer(pred.arrow);
-                    }
-                } catch (e) {
-                    console.error('Error removing prediction:', e);
+            // כבה עדכונים אוטומטיים של חיזויים
+            showPredictions = false;
+            document.getElementById('show-predictions').checked = false;
+            
+            // מחיקת כל החיזויים - בכוח
+            map.eachLayer(function(layer) {
+                // מחק רק polylines ו-markers של חיזויים (לא את שכבת המפה הבסיסית)
+                if (layer instanceof L.Polyline && layer.options.dashArray) {
+                    map.removeLayer(layer);
                 }
-            }
+                if (layer instanceof L.Marker && layer.options.icon && 
+                    layer.options.icon.options.html && 
+                    layer.options.icon.options.html.includes('transform: rotate')) {
+                    map.removeLayer(layer);
+                }
+            });
             predictionLines = {};
             
             // מחיקת כל הסמנים
             for (const id in markers) {
-                try {
-                    if (markers[id] && map.hasLayer(markers[id])) {
-                        map.removeLayer(markers[id]);
-                    }
-                } catch (e) {
-                    console.error('Error removing marker:', e);
+                if (markers[id]) {
+                    markers[id].remove();
                 }
             }
             markers = {};
             
             // מחיקת dead zones
             for (const id in deadzones) {
-                try {
-                    if (deadzones[id].circle && map.hasLayer(deadzones[id].circle)) {
-                        map.removeLayer(deadzones[id].circle);
-                    }
-                    if (deadzones[id].marker && map.hasLayer(deadzones[id].marker)) {
-                        map.removeLayer(deadzones[id].marker);
-                    }
-                } catch (e) {
-                    console.error('Error removing deadzone:', e);
+                if (deadzones[id]) {
+                    if (deadzones[id].circle) deadzones[id].circle.remove();
+                    if (deadzones[id].marker) deadzones[id].marker.remove();
                 }
             }
             deadzones = {};
