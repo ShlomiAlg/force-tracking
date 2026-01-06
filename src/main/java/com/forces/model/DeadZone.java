@@ -2,6 +2,40 @@ package com.forces.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "deadzones")
+public class DeadZone {
+    
+    @Id
+    private String id;
+    
+    @Column(nullable = false)
+    private double latitude;
+    
+    @Column(nullable = false)
+    private double longitude;
+    
+    @Column(nullable = false)
+    private double radius;
+    
+    private String name;
+    
+    private String description;
+    
+    private long timestamp;
+    
+    // ... שאר הקוד נשאר אותו דבר
+}
+
+
+
+
+
+
+
 public class DeadZone {
     
     @JsonProperty("id")
