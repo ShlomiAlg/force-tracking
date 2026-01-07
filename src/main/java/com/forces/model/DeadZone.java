@@ -2,15 +2,42 @@ package com.forces.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table; // <--- 1. הוסף את השורה הזו
+
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "deadzones")
 public class DeadZone {
+    
+    @Id
+    private String id;
+    
+    @Column(nullable = false)
+    private double latitude;
+    
+    @Column(nullable = false)
+    private double longitude;
+    
+    @Column(nullable = false)
+    private double radius;
+    
+    private String name;
+    
+    private String description;
+    
+    private long timestamp;
+    
+    // ... שאר הקוד נשאר אותו דבר
+}
 
-    @Id // <--- 2. הוסף את השורה הזו (חובה!)
+
+
+
+
+
+
+public class DeadZone {
+    
     @JsonProperty("id")
     private String id;
     
@@ -21,7 +48,7 @@ public class DeadZone {
     private double longitude;
     
     @JsonProperty("radius")
-    private double radius; 
+    private double radius; // ברדיוס במטרים
     
     @JsonProperty("name")
     private String name;
@@ -47,21 +74,62 @@ public class DeadZone {
         this.timestamp = System.currentTimeMillis();
     }
 
-    // Getters and Setters (לא השתנה כלום למטה)
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    public double getLatitude() { return latitude; }
-    public void setLatitude(double latitude) { this.latitude = latitude; }
-    public double getLongitude() { return longitude; }
-    public void setLongitude(double longitude) { this.longitude = longitude; }
-    public double getRadius() { return radius; }
-    public void setRadius(double radius) { this.radius = radius; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public long getTimestamp() { return timestamp; }
-    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+    // Getters and Setters
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
+    }
+
+    public double getRadius() {
+        return radius;
+    }
+
+    public void setRadius(double radius) {
+        this.radius = radius;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
 
     @Override
     public String toString() {

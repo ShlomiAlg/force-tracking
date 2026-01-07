@@ -21,13 +21,8 @@ public class ForceLocation {
     
     @JsonProperty("timestamp")
     private long timestamp;
-    
-    @JsonProperty("signalStrength")
-    private int signalStrength = 0; // 0-4
-    
-    @JsonProperty("isConnected")
-    private boolean isConnected = true; // זיהוי ניתוק
 
+    // Constructors
     public ForceLocation() {
         this.timestamp = System.currentTimeMillis();
     }
@@ -42,45 +37,62 @@ public class ForceLocation {
     }
 
     // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public double getLatitude() { return latitude; }
-    public void setLatitude(double latitude) { this.latitude = latitude; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public double getLongitude() { return longitude; }
-    public void setLongitude(double longitude) { this.longitude = longitude; }
+    public double getLatitude() {
+        return latitude;
+    }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public double getLongitude() {
+        return longitude;
+    }
 
-    public long getTimestamp() { return timestamp; }
-    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
+    }
 
-    public int getSignalStrength() { return signalStrength; }
-    public void setSignalStrength(int signalStrength) { this.signalStrength = signalStrength; }
+    public String getType() {
+        return type;
+    }
 
-    public boolean isConnected() { return isConnected; }
-    public void setConnected(boolean connected) { isConnected = connected; }
+    public void setType(String type) {
+        this.type = type;
+    }
 
-    // בדיקה אם הכוח מנותק (לא עדכן יותר מ-30 שניות)
-    public boolean checkIfDisconnected() {
-        long timeSinceUpdate = System.currentTimeMillis() - this.timestamp;
-        this.isConnected = timeSinceUpdate < 30000; // 30 שניות
-        return !this.isConnected;
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     @Override
     public String toString() {
         return "ForceLocation{" +
                 "id='" + id + '\'' +
-                ", name='" + name + '\'' +
+                ", latitude=" + latitude +
+                ", longitude=" + longitude +
                 ", type='" + type + '\'' +
-                ", signalStrength=" + signalStrength +
-                ", isConnected=" + isConnected +
+                ", name='" + name + '\'' +
                 ", timestamp=" + timestamp +
                 '}';
     }
