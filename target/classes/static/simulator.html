@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<<<<<<< HEAD
+=======
+
+>>>>>>> b75c70a344c125b94a2fd1282ee87b907282c39b
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סימולטור תנועת כוחות</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #34495e;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #3498db;
+        }
+
+        .config {
+            background: #2c3e50;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .field {
+            margin-bottom: 15px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .field input, .field select {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #34495e;
+            color: white;
+            font-size: 14px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .buttons button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-start {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #229954;
+        }
+
+        .btn-stop {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-stop:hover {
+            background: #c0392b;
+        }
+
+        .status {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .status h3 {
+            margin-bottom: 10px;
+            color: #3498db;
+        }
+
+        .force-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .force-item {
+            background: #2c3e50;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .force-item.moving {
+            border-left: 3px solid #27ae60;
+        }
+
+        .force-name {
+            font-weight: bold;
+        }
+
+        .force-location {
+            font-size: 12px;
+            color: #95a5a6;
+            font-family: monospace;
+        }
+
+        .log {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-success {
+            color: #27ae60;
+        }
+
+        .log-error {
+            color: #e74c3c;
+        }
+
+        .log-info {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 סימולטור תנועת כוחות</h1>
+
+        <div class="config">
+            <div class="field">
+                <label>🌐 כתובת שרת:</label>
+                <input type="text" id="server-url" value="force-tracking-production.up.railway.app">
+            </div>
+
+            <div class="field">
+                <label>🔢 מספר כוחות:</label>
+                <input type="number" id="num-forces" value="5" min="1" max="20">
+            </div>
+
+            <div class="field">
+                <label>⏱️ תדירות עדכון (שניות):</label>
+                <input type="number" id="update-interval" value="3" min="1" max="60">
+            </div>
+
+            <div class="field">
+                <label>🎯 סוג תנועה:</label>
+                <select id="movement-type">
+                    <option value="random">אקראי</option>
+                    <option value="straight">קו ישר</option>
+                    <option value="circle">מעגל</option>
+                    <option value="zigzag">זיגזג</option>
+                </select>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-start" onclick="startSimulation()">▶️ התחל סימולציה</button>
+                <button class="btn-stop" onclick="stopSimulation()">⏸️ עצור</button>
+            </div>
+        </div>
+
+        <div class="status">
+            <h3>📊 סטטוס</h3>
+            <div>מצב: <span id="sim-status">לא פעיל</span></div>
+            <div>כוחות פעילים: <span id="active-forces">0</span></div>
+            <div>מיקומים נשלחו: <span id="locations-sent">0</span></div>
+        </div>
+
+        <div class="status">
+            <h3>🚁 כוחות מדומים</h3>
+            <div class="force-list" id="force-list"></div>
+        </div>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let simulationInterval = null;
+        let forces = [];
+        let locationsSent = 0;
+
+        const forceTypes = ['infantry', 'armor', 'artillery', 'other'];
+        const forceNames = ['מגד 846', 'מגד 932', 'מגד 77', 'מגד 13', 'מחט 12', 'מחט 84'];
+
+        // מיקום מרכז ישראל
+        const CENTER = { lat: 32.0853, lng: 34.7818 };
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry log-' + type;
+            const timestamp = new Date().toLocaleTimeString('he-IL');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+            
+            // שמור רק 50 הודעות אחרונות
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        function initializeForces() {
+            const numForces = parseInt(document.getElementById('num-forces').value);
+            forces = [];
+
+            for (let i = 0; i < numForces; i++) {
+                const force = {
+                    id: `sim_force_${i + 1}`,
+                    name: `כוח ${forceNames[i % forceNames.length]} ${i + 1}`,
+                    type: forceTypes[Math.floor(Math.random() * forceTypes.length)],
+                    lat: CENTER.lat + (Math.random() - 0.5) * 0.1,
+                    lng: CENTER.lng + (Math.random() - 0.5) * 0.1,
+                    angle: Math.random() * 360,
+                    speed: 0.0001 + Math.random() * 0.0002,
+                    step: 0
+                };
+                forces.push(force);
+            }
+
+            updateForceList();
+            log(`אותחלו ${numForces} כוחות מדומים`, 'success');
+        }
+
+        function updateForceList() {
+            const listDiv = document.getElementById('force-list');
+            listDiv.innerHTML = '';
+
+            forces.forEach(force => {
+                const item = document.createElement('div');
+                item.className = 'force-item' + (isRunning ? ' moving' : '');
+                item.innerHTML = `
+                    <div>
+                        <div class="force-name">${force.name} (${force.type})</div>
+                        <div class="force-location">${force.lat.toFixed(6)}, ${force.lng.toFixed(6)}</div>
+                    </div>
+                `;
+                listDiv.appendChild(item);
+            });
+        }
+
+        function moveForces() {
+            const movementType = document.getElementById('movement-type').value;
+
+            forces.forEach(force => {
+                switch (movementType) {
+                    case 'straight':
+                        // תנועה בקו ישר
+                        force.lat += Math.cos(force.angle * Math.PI / 180) * force.speed;
+                        force.lng += Math.sin(force.angle * Math.PI / 180) * force.speed;
+                        break;
+
+                    case 'circle':
+                        // תנועה במעגל
+                        force.step += 0.1;
+                        force.lat = CENTER.lat + Math.cos(force.step) * 0.05;
+                        force.lng = CENTER.lng + Math.sin(force.step) * 0.05;
+                        break;
+
+                    case 'zigzag':
+                        // זיגזג
+                        if (force.step % 10 === 0) {
+                            force.angle += 60;
+                        }
+                        force.lat += Math.cos(force.angle * Math.PI / 180) * force.speed;
+                        force.lng += Math.sin(force.angle * Math.PI / 180) * force.speed;
+                        force.step++;
+                        break;
+
+                    case 'random':
+                    default:
+                        // תנועה אקראית
+                        force.angle += (Math.random() - 0.5) * 30;
+                        force.lat += Math.cos(force.angle * Math.PI / 180) * force.speed;
+                        force.lng += Math.sin(force.angle * Math.PI / 180) * force.speed;
+                        break;
+                }
+            });
+        }
+
+        function sendLocations() {
+            const serverUrl = document.getElementById('server-url').value;
+
+            forces.forEach(force => {
+                const payload = {
+                    id: force.id,
+                    latitude: force.lat,
+                    longitude: force.lng,
+                    type: force.type,
+                    name: force.name
+                };
+
+                fetch(serverUrl + '/api/forces/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    locationsSent++;
+                    document.getElementById('locations-sent').textContent = locationsSent;
+                })
+                .catch(error => {
+                    log(`שגיאה בשליחת ${force.name}: ${error.message}`, 'error');
+                });
+            });
+
+            log(`נשלחו ${forces.length} מיקומים`, 'success');
+        }
+
+        function startSimulation() {
+            if (isRunning) {
+                log('הסימולציה כבר רצה!', 'error');
+                return;
+            }
+
+            initializeForces();
+            isRunning = true;
+            locationsSent = 0;
+
+            document.getElementById('sim-status').textContent = '✅ פעיל';
+            document.getElementById('active-forces').textContent = forces.length;
+
+            const interval = parseInt(document.getElementById('update-interval').value) * 1000;
+
+            // שלח מיקום ראשוני
+            sendLocations();
+
+            // המשך לשלוח כל X שניות
+            simulationInterval = setInterval(() => {
+                moveForces();
+                sendLocations();
+                updateForceList();
+            }, interval);
+
+            log('🎮 הסימולציה התחילה!', 'success');
+        }
+
+        function stopSimulation() {
+            if (!isRunning) {
+                return;
+            }
+
+            isRunning = false;
+            clearInterval(simulationInterval);
+            document.getElementById('sim-status').textContent = '⏸️ מופסק';
+
+            log('⏸️ הסימולציה הופסקה', 'info');
+        }
+
+        // לוג ראשוני
+        log('מערכת הסימולציה מוכנה', 'info');
+    </script>
+</body>
+</html>
