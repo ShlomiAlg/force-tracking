@@ -822,12 +822,41 @@
                     zoomControl: true
                 });
 
-                console.log('Adding tile layer...');
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
+                console.log('Adding tile layers...');
+                
+                // שכבת מפה רגילה (ברירת מחדל)
+                const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap',
                     maxZoom: 18,
                     minZoom: 3
-                }).addTo(map);
+                });
+                
+                // שכבת לוויין
+                const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri',
+                    maxZoom: 18,
+                    minZoom: 3
+                });
+                
+                // שכבת היברידית (לוויין + שמות)
+                const hybridLayer = L.layerGroup([
+                    satelliteLayer,
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png', {
+                        maxZoom: 18
+                    })
+                ]);
+                
+                // הוסף את המפה הרגילה כברירת מחדל
+                streetLayer.addTo(map);
+                
+                // בקר שכבות
+                const baseMaps = {
+                    "🗺️ מפה רגילה": streetLayer,
+                    "🛰️ לוויין": satelliteLayer,
+                    "🌍 לוויין + תוויות": hybridLayer
+                };
+                
+                L.control.layers(baseMaps).addTo(map);
 
                 // אירוע שמתרחש כשהמפה נטענת
                 map.on('load', function() {
