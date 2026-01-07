@@ -1,8 +1,8 @@
 package com.forces.model;
 
-import jakarta.persistence.Column;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 
@@ -11,24 +11,28 @@ import jakarta.persistence.Table;
 
 public class DeadZone {
     
-    @Id
+
+
+    @JsonProperty("id")
     private String id;
     
-    @Column(nullable = false)
+    @JsonProperty("latitude")
     private double latitude;
     
-    @Column(nullable = false)
+    @JsonProperty("longitude")
     private double longitude;
     
-    @Column(nullable = false)
-    private double radius;
+    @JsonProperty("radius")
+    private double radius; // ברדיוס במטרים
     
+    @JsonProperty("name")
     private String name;
     
+    @JsonProperty("description")
     private String description;
     
+    @JsonProperty("timestamp")
     private long timestamp;
-
 
     // Constructors
     public DeadZone() {
